@@ -13,7 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # 2. Install R packages using Posit binaries
 ENV R_REPOS=https://packagemanager.posit.co/cran/__linux__/jammy/latest
-RUN R -e "install.packages(c('shiny', 'readxl', 'writexl', 'readr', 'dplyr', 'glue', 'ggplot2'), repos='${R_REPOS}')"
+RUN R -e "install.packages(c('shiny', 'readxl', 'readr', 'dplyr', 'glue'), repos='${R_REPOS}')"
+# Removed these packages 
+# 'writexl', 'ggplot2'
 
 # 3. ADVANCED: Strip debugging symbols from the installed packages to save ~10-20% more space
 RUN find /usr/local/lib/R/site-library -name "*.so" -exec strip --strip-debug {} \;

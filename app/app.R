@@ -9,7 +9,7 @@
 # https://github.com/posit-dev/r-shinylive/issues/167
 # Test locally
 # httpuv::runStaticServer("~/Desktop//lmmjvR_site")
- 
+
 # Set libraries -----------------------------------------------------------
 # Don't forget to add them in the Dockerfile
 library(shiny)
@@ -28,13 +28,8 @@ cols = c("category",
          "hr")
 
 # Bold text 
-text_with_bold <- glue("Cette application prend un fichier 
-                d'heures avec les colonnes <strong>{cols[1]}</strong>, 
-                <strong>{cols[2]}</strong> et <strong>{cols[3]}</strong>. 
-                Le sommaire des heures est calculé dans l'onglet 'Sommaire'.
-                l'onglet 'Graph sommaire' fait un graphique avec les données synthétisées et 
-                l'onglet 'Données brutes' permet de visualiser les données.
-                ")
+# text_with_bold <- glue("<strong>{cols[1]}</strong>, <strong>{cols[2]}</strong> et <strong>{cols[3]}</strong>.")
+
 # UI Logic
 ui <- shiny::fluidPage(
   
@@ -48,39 +43,53 @@ ui <- shiny::fluidPage(
     shiny::sidebarPanel(
       width = 3,
       
-      tags$h4("Utilisation :"), # Apply an HTML tag to text 
+      # ******************************************************************
+      # Section : Utilisation
+      tags$h4("Utilisation"), # Apply an HTML tag to text 
+      p("Cette application faire un sommaire d'heures."),
+      h4("Prérequis"),
+      p("Le fichier d'entré doit avoir les colonnes : "),
+      # Add the columns names automagically 
+      tags$ul(
+        tags$li( tags$strong( glue("{cols[1]}") ) ),
+        tags$li( tags$strong( glue("{cols[2]}") ) ),
+        tags$li( tags$strong( glue("{cols[3]}") ) )
+      ),
       
-      # Add a paragraph of text
-      p(
-      # Use the HTML() function to tell Shiny to render the raw HTML string
-        HTML(text_with_bold)
-        ),
-
-      shiny::hr(), # HTML tag from htmltools via shiny
+      # Add horizontal line
+      HTML("<hr style=\"border: 1px solid	#C8C8C8; width: 100%;\">"),
       
-      tags$h4("Importation :"), # Apply an HTML tag to text 
+      
+      # ******************************************************************
       # Section : importation 
+      tags$h4("Importation"), # Apply an HTML tag to text 
       shiny::fileInput(inputId = "upload", # Will be used in the server 
-                label = "Téléverser un fichier CSV ou Excel", 
-                accept = c(".csv", ".xlsx", ".xls")),
+                       label = "Téléverser un fichier CSV ou Excel", 
+                       accept = c(".csv", ".xlsx", ".xls")),
       
-      shiny::hr(), # HTML tag from htmltools via shiny
+      # shiny::hr(), # HTML tag from htmltools via shiny
       
+      # Add horizontal line
+      HTML("<hr style=\"border: 1px solid	#C8C8C8; width: 100%;\">"),
+      
+      # ******************************************************************
       # Section : autres paramètres
       tags$h4("Paramètres de modulation"), # Apply an HTML tag to text 
       shiny::numericInput(inputId = "price", label = "Prix ($) :", value = 0),
       
+      # ******************************************************************
       # Section : exportation 
       tags$h4("Paramètres d'exportation"), # Apply an HTML tag to text 
       ## Selection of Export type 
       shiny::radioButtons("file_type", "Sélectionner le format d'exportation:",
-                   choices = c("CSV" = ".csv"#, 
-                               # "Excel" = ".xlsx"
-                   )
+                          choices = c("CSV" = ".csv"#, 
+                                      # "Excel" = ".xlsx"
+                          )
       ),
       # Download button 
-      shiny::downloadButton(outputId = "download_data", 
-                     label = "Télécharger le sommaire")
+      shiny::downloadButton(
+        outputId = "download_data", 
+        label = "Télécharger le sommaire")
     ), # End sidebarPanel 
     
     # Main page 
@@ -134,17 +143,17 @@ server <- function(input, output) {
       group_by(category,
                New_taches_Monday) |> 
       summarise(.groups = 'drop',
-        across(hr, 
-               list(min = min, 
-                    q25 = ~quantile(., 0.25),
-                    median = median,
-                    q75 = ~quantile(., 0.75), 
-                    max = max, 
-                    mean = mean, 
-                    sd  = sd, 
-                    sum = sum, 
-                    nb = ~n())
-        )
+                across(hr, 
+                       list(min = min, 
+                            q25 = ~quantile(., 0.25),
+                            median = median,
+                            q75 = ~quantile(., 0.75), 
+                            max = max, 
+                            mean = mean, 
+                            sd  = sd, 
+                            sum = sum, 
+                            nb = ~n())
+                )
       ) |> 
       mutate(prix = hr_sum*input$price)
   })
@@ -184,7 +193,7 @@ server <- function(input, output) {
         readr::write_excel_csv(x = summary_df(), 
                                file = file)
       } #else {
-        #writexl::write_xlsx(summary_df(), file)
+      #writexl::write_xlsx(summary_df(), file)
       #}
     }
   )

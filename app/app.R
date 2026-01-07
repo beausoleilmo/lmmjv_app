@@ -2,33 +2,34 @@
 ## NO SECRETS OR TOKEN Should be in the script 
 ### 
 
-# BUILDING Shinylive 
-# shinylive::export('~/Github_proj/lmmjvR/', destdir = '~/Desktop//lmmjvR_site')
-# shinylive::export('~/Github_proj/lmmjvR/', destdir = '~/Desktop//lmmjvR_site', assets_version = '0.10.6')
-# see the use of another asset version 
-# https://github.com/posit-dev/r-shinylive/issues/167
-# Test locally
-# httpuv::runStaticServer("~/Desktop//lmmjvR_site")
-
 # Set libraries -----------------------------------------------------------
 # Don't forget to add them in the Dockerfile
-library(shiny)
-library(dplyr)
-library(readxl)
-library(readr)
+library(shiny, quietly = TRUE)
+library(dplyr, quietly = TRUE, warn.conflicts = FALSE)
+library(readxl, quietly = TRUE)
+library(readr, quietly = TRUE)
 # library(writexl)
-library(glue)
+library(glue, quietly = TRUE)
 # library(ggplot2)
 # library(munsell) # Needed for shinylive... dependency from ggplot2
 
 
+# Workaround for Chromium Issue 468227
+# Need this to properly download the csv file
+# this bug and workaround is only for shinylive, you do not need it in your regular app
+# Replaces : shiny::downloadButton()
+downloadButton_fix <- function(...) {
+  tag <- shiny::downloadButton(...)
+  tag$attribs$download <- NULL
+  tag
+}
+
 # Required column names
-cols = c("category",
-         "New_taches_Monday", 
-         "hr")
+# Check if required columns exist
+required_cols <- c("category", "New_taches_Monday", "hr")
 
 # Bold text 
-# text_with_bold <- glue("<strong>{cols[1]}</strong>, <strong>{cols[2]}</strong> et <strong>{cols[3]}</strong>.")
+# text_with_bold <- glue("<strong>{required_cols[1]}</strong>, <strong>{required_cols[2]}</strong> et <strong>{required_cols[3]}</strong>.")
 
 # UI Logic
 ui <- shiny::fluidPage(
@@ -51,9 +52,9 @@ ui <- shiny::fluidPage(
       p("Le fichier d'entré doit avoir les colonnes : "),
       # Add the columns names automagically 
       tags$ul(
-        tags$li( tags$strong( glue("{cols[1]}") ) ),
-        tags$li( tags$strong( glue("{cols[2]}") ) ),
-        tags$li( tags$strong( glue("{cols[3]}") ) )
+        tags$li( tags$strong( glue("{required_cols[1]}") ) ),
+        tags$li( tags$strong( glue("{required_cols[2]}") ) ),
+        tags$li( tags$strong( glue("{required_cols[3]}") ) )
       ),
       
       # Add horizontal line
@@ -87,7 +88,7 @@ ui <- shiny::fluidPage(
                           )
       ),
       # Download button 
-      shiny::downloadButton(
+      downloadButton_fix(
         outputId = "download_data", 
         label = "Télécharger le sommaire")
     ), # End sidebarPanel 
@@ -117,14 +118,20 @@ server <- function(input, output) {
     
     # Read CONDITIONNALY from the input file extention
     df <- switch(EXPR = ext,
-                 csv = read.csv(input$upload$datapath),
+                 csv = {
+                   # Check if the file is likely a CSV2 (semicolon-separated) or a standard CSV
+                   # You might need to adjust this logic based on expected user files
+                   if (any(grepl(";", readLines(input$upload$datapath, n = 5)))) {
+                     read.csv2(input$upload$datapath)
+                   } else {
+                     read.csv(input$upload$datapath)
+                   }
+                 },
                  xlsx = read_excel(input$upload$datapath),
                  xls = read_excel(input$upload$datapath),
                  validate("Fichier invalide; S.V.P., le fichier doit être .csv ou .xlsx")
     )
     
-    # Check if required columns exist
-    required_cols <- c("category", "New_taches_Monday", "hr")
     # Validation 
     if (!all(required_cols %in% colnames(df))) {
       validate(paste("Error: File must contain columns:", paste(required_cols, collapse = ", ")))
@@ -190,8 +197,9 @@ server <- function(input, output) {
     },
     content = function(file) {
       if (input$file_type == ".csv") {
-        readr::write_excel_csv(x = summary_df(), 
-                               file = file)
+        readr::write_excel_csv(
+          x = summary_df(), 
+          file = file)
       } #else {
       #writexl::write_xlsx(summary_df(), file)
       #}
